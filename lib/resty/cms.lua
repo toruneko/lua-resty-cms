@@ -43,12 +43,12 @@ local _M = { _VERSION = '0.01' }
 local mt = { __index = _M }
 
 ffi.cdef [[
-//ERR函数
+//ERR Functions
 unsigned long ERR_get_error(void);
 const char *ERR_reason_error_string(unsigned long e);
 void ERR_clear_error(void);
 
-// BIO系列函数
+// BIO Functions
 typedef struct bio_st BIO;
 typedef struct bio_method_st BIO_METHOD;
 BIO_METHOD *BIO_s_mem(void);
@@ -64,7 +64,7 @@ BIO *BIO_new_mem_buf(const void *buf, int len);
 int SMIME_crlf_copy(BIO *in, BIO *out, int flags);
 long BIO_ctrl(BIO *bp, int cmd, long larg, void *parg);
 
-//stack函数
+//stack Functions
 typedef struct stack_st _STACK;
 int sk_num(const _STACK *st);
 void *sk_value(const _STACK *st, int i);
@@ -73,30 +73,30 @@ void sk_free(_STACK *st);
 int sk_push(_STACK *st, void *data);
 void sk_pop_free(_STACK *st, void (*func) (void *));
 
-//ASN1系列函数
+//ASN1 Functions
 typedef struct asn1_string_st ASN1_STRING;
 typedef struct asn1_object_st ASN1_OBJECT;
 int OBJ_obj2nid(const ASN1_OBJECT *o);
 int ASN1_STRING_length(ASN1_STRING *x);
 
-//digests函数
+//digests Functions
 typedef struct env_md_st EVP_MD;
 void OpenSSL_add_all_digests(void);
 const EVP_MD *EVP_get_digestbyname(const char *name);
 
-//cipher系列函数
+//cipher Functions
 typedef struct evp_cipher_st EVP_CIPHER;
 const EVP_CIPHER *EVP_des_ede(void);
 const EVP_CIPHER *EVP_des_cbc(void);
 const EVP_CIPHER *EVP_des_ede3_cbc(void);
 
-//RSA函数
+//RSA Functions
 typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
 typedef struct rsa_st RSA;
 void RSA_free(RSA *rsa);
 RSA * PEM_read_bio_RSAPrivateKey(BIO *bp, RSA **rsa, pem_password_cb *cb, void *u);
 
-//X509函数
+//X509 Functions
 typedef struct x509_st X509;
 typedef struct X509_crl_st X509_CRL;
 typedef struct X509_algor_st X509_ALGOR;
@@ -118,13 +118,13 @@ const char *X509_verify_cert_error_string(long n);
 X509_STORE_CTX *X509_STORE_CTX_new(void);
 void X509_STORE_CTX_free(X509_STORE_CTX *ctx);
 
-//PKEY函数
+//PKEY Functions
 typedef struct evp_pkey_st EVP_PKEY;
 EVP_PKEY *EVP_PKEY_new(void);
 void EVP_PKEY_free(EVP_PKEY *key);
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey,RSA *key);
 
-//CMS系列函数
+//CMS Functions
 typedef struct CMS_ContentInfo_st CMS_ContentInfo;
 CMS_ContentInfo *CMS_ContentInfo_new();
 void *CMS_ContentInfo_free(CMS_ContentInfo *cms);
@@ -135,7 +135,7 @@ int CMS_set_detached(CMS_ContentInfo *cms, int detached);
 ASN1_STRING **CMS_get0_content(CMS_ContentInfo *cms);
 const ASN1_OBJECT *CMS_get0_type(CMS_ContentInfo *cms);
 
-//签名相关函数
+//signature Functions
 typedef struct CMS_SignerInfo_st CMS_SignerInfo;
 int CMS_SignedData_init(CMS_ContentInfo *cms);
 CMS_SignerInfo *CMS_add1_signer(CMS_ContentInfo *cms,
@@ -144,13 +144,13 @@ CMS_SignerInfo *CMS_add1_signer(CMS_ContentInfo *cms,
 BIO *CMS_dataInit(CMS_ContentInfo *cms, BIO *icont);
 int CMS_dataFinal(CMS_ContentInfo *cms, BIO *cmsbio);
 
-//加密相关函数
+//encrypt Functions
 typedef struct CMS_RecipienCMS_EnvelopedData_createtInfo_st CMS_RecipientInfo;
 CMS_ContentInfo *CMS_EnvelopedData_create(const EVP_CIPHER *cipher);
 CMS_RecipientInfo *CMS_add1_recipient_cert(CMS_ContentInfo *cms,
                                            X509 *recip, unsigned int flags);
 
-//解密相关函数
+//decrypt Functions
 typedef struct CMS_RecipientEncryptedKey_st CMS_RecipientEncryptedKey;
 struct stack_st_CMS_RecipientInfo *CMS_get0_RecipientInfos(CMS_ContentInfo *cms);
 int CMS_RecipientInfo_type(CMS_RecipientInfo *ri);
@@ -167,7 +167,7 @@ int CMS_RecipientInfo_ktri_cert_cmp(CMS_RecipientInfo *ri, X509 *cert);
 int CMS_RecipientInfo_set0_pkey(CMS_RecipientInfo *ri, EVP_PKEY *pkey);
 int CMS_RecipientInfo_decrypt(CMS_ContentInfo *cms, CMS_RecipientInfo *ri);
 
-//验签相关函数
+//verify Functions
 struct stack_st_CMS_SignerInfo *CMS_get0_SignerInfos(CMS_ContentInfo *cms);
 void CMS_SignerInfo_get0_algs(CMS_SignerInfo *si, EVP_PKEY **pk,
                               X509 **signer, X509_ALGOR **pdig,
