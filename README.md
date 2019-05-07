@@ -25,21 +25,20 @@ Synopsis
         location = /t {
             content_by_lua_block {
                 local cms = require "resty.cms"
-                local CMS = cms:new({
-                  private_key = "",   -- my pkey for sign or decrypt
-                  private_cert = "",  -- my pcert for sign, decrypt or verify
-                  public_cert = "",   -- your cert for encrypt
-                  root_cert = {},     -- root store for verify
-                  algorithm = "RSA-SHA1", -- forget
-                  cipher = "des",     -- encrypt cipher
-                  method = "ede3_cbc",-- encrypt method
+                local CMS = cms.new({
+                  private_key = "",
+                  sign_cert = "",
+                  cert = "",
+                  root_cert = {},
+                  algorithm = "RSA-SHA1",
+                  cipher = "des",
+                  method = "ede3_cbc",
                 })
-                local signed = CMS:sign("abc")  -- using my pcert and pkey
-                ngx.say(CMS:encrypt(signed))    -- using your cert
+                local signed = CMS:sign("abc")  -- using sign_cert and private_key
+                ngx.say(CMS:encrypt(signed))    -- using cert
 
-                -- when I receive your message
-                local decrypt = CMS:decrypt(喵喵喵)   -- using my pcert and pkey
-                ngx.say(CMS:verify(decrypt))          -- using my pcert and root store
+                local decrypt = CMS:decrypt("喵喵喵")  -- using my sign_cert and private_key
+                ngx.say(CMS:verify(decrypt))          -- using my cert and root_cert
             }
         }
     }
@@ -68,7 +67,7 @@ Creates a new cms object instance
 ```lua
 -- creates a cms object
 local cms = require "resty.cms"
-local CMS = cms:new()
+local CMS = cms.new()
 ```
 
 sign
