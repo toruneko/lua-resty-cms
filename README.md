@@ -59,7 +59,7 @@ To load this library,
 
 new
 ---
-`syntax: CMS = cms:new()`
+`syntax: CMS = cms.new()`
 
 Creates a new cms object instance
 
@@ -80,11 +80,11 @@ verify
 
 encrypt
 ------
-`syntax: local encryped, err = sm3:encrypt(data)`
+`syntax: local encryped, err = cms:encrypt(data)`
 
 decrypt
 ------
-`syntax: local decryped, err = sm3:decrypt(data)`
+`syntax: local decryped, err = cms:decrypt(data)`
 
 Author
 ======
