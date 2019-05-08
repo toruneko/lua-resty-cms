@@ -78,6 +78,7 @@ void *CMS_ContentInfo_free(CMS_ContentInfo *cms);
 int i2d_CMS_ContentInfo(CMS_ContentInfo *a, unsigned char **pp);
 CMS_ContentInfo *d2i_CMS_ContentInfo(CMS_ContentInfo **a, unsigned char **pp,
                                      long length);
+CMS_ContentInfo *PEM_read_bio_CMS(BIO *bp, CMS_ContentInfo **a, pem_password_cb *cb, void *u);
 
 CMS_ContentInfo *CMS_sign(X509 *signcert, EVP_PKEY *pkey,
                           struct stack_st_X509 *certs, BIO *data,
@@ -217,123 +218,6 @@ local function X509_STORE_new(cert)
     return ctx
 end
 
-local function i2d_CMS_ContentInfo(cms)
-    local str = ffi_new("unsigned char*[1]")
-    local str_len = C.i2d_CMS_ContentInfo(cms, str)
-    if str_len == 0 then
-        return nil, get_error()
-    end
-
-    return ffi_str(str[0], str_len)
-end
-
-local function d2i_CMS_ContentInfo(data)
-    local enc_data = ffi_new("unsigned char*[1]")
-    enc_data[0] = ffi_cast("unsigned char*", data)
-    local cms = C.d2i_CMS_ContentInfo(ffi_null, enc_data, #data)
-    if cms == ffi_null then
-        return nil, get_error()
-    end
-    ffi_gc(cms, C.CMS_ContentInfo_free)
-
-    return cms
-end
-
-local function CMS_sign(signcert, pkey, data)
-    if not data then
-        return nil, "no plain data"
-    end
-
-    local data_in, err = BIO_new(data)
-    if not data_in then
-        return nil, err
-    end
-
-    local cms = C.CMS_sign(signcert, pkey, ffi_null, data_in, CMS_NOATTR)
-    if cms == ffi_null then
-        return nil, get_error()
-    end
-
-    local signed, err = i2d_CMS_ContentInfo(cms)
-    if not signed then
-        return nil, err
-    end
-
-    return signed
-end
-
-local function CMS_verify(cert, store, data)
-    if not data then
-        return nil, "no cihper data"
-    end
-
-    local cms, err = d2i_CMS_ContentInfo(data)
-    if not cms then
-        return nil, err
-    end
-
-    local out = BIO_new()
-    local certs = sk_X509_new({ cert })
-    if C.CMS_verify(cms, certs, store, ffi_null, out,
-        bor(CMS_NO_ATTR_VERIFY, CMS_NO_CONTENT_VERIFY)) == 0 then
-        return nil, get_error()
-    end
-
-    local verified, err = BIO_read(out)
-    if not verified then
-        return nil, err
-    end
-
-    return verified
-end
-
-local function CMS_encrypt(x509, cipher, data)
-    if not data then
-        return nil, "no plain data"
-    end
-
-    local data_in, err = BIO_new(data)
-    if not data_in then
-        return nil, err
-    end
-
-    local certs = sk_X509_new({ x509 })
-    local cms, err = C.CMS_encrypt(certs, data_in, cipher, 0)
-    if not cms then
-        return nil, err
-    end
-
-    local encryped, err = i2d_CMS_ContentInfo(cms)
-    if not encryped then
-        return nil, err
-    end
-
-    return encryped
-end
-
-local function CMS_decrypt(pkey, cert, data)
-    if not data then
-        return nil, "no chiper data"
-    end
-
-    local cms, err = d2i_CMS_ContentInfo(data)
-    if not cms then
-        return nil, err
-    end
-
-    local out = BIO_new()
-    if C.CMS_decrypt(cms, pkey, cert, ffi_null, out, CMS_DEBUG_DECRYPT) == 0 then
-        return nil, get_error()
-    end
-
-    local decryped, err = BIO_read(out)
-    if not decryped then
-        return nil, err
-    end
-
-    return decryped
-end
-
 function _M.new(opts)
     local cms = {}
 
@@ -397,20 +281,183 @@ function _M.new(opts)
     return setmetatable(cms, mt)
 end
 
+function _M.BIO_new(self, data, method)
+    local bio, err = BIO_new(data, method)
+    if not bio then
+        return nil, err
+    end
+    return bio
+end
+
+function _M.BIO_read(self, bio)
+    local data, err = BIO_read(bio)
+    if not data then
+        return nil, err
+    end
+    return data
+end
+
+function _M.i2d_CMS_ContentInfo(self, cms)
+    local str = ffi_new("unsigned char*[1]")
+    local str_len = C.i2d_CMS_ContentInfo(cms, str)
+    if str_len == 0 then
+        return nil, get_error()
+    end
+
+    return ffi_str(str[0], str_len)
+end
+
+function _M.d2i_CMS_ContentInfo(self, data)
+    local enc_data = ffi_new("unsigned char*[1]")
+    enc_data[0] = ffi_cast("unsigned char*", data)
+    local cms = C.d2i_CMS_ContentInfo(ffi_null, enc_data, #data)
+    if cms == ffi_null then
+        return nil, get_error()
+    end
+    ffi_gc(cms, C.CMS_ContentInfo_free)
+
+    return cms
+end
+
+function _M.PEM_read_bio_CMS(self, data, pass)
+    local data_in, err = self:BIO_new(data)
+    if not data_in then
+        return nil, err
+    end
+
+    local cms = C.PEM_read_bio_CMS(data_in, ffi_null, ffi_null, pass)
+    if cms == ffi_null then
+        return nil, get_error()
+    end
+    ffi_gc(cms, C.CMS_ContentInfo_free)
+
+    return cms
+end
+
+function _M.CMS_sign(self, data_in, flags)
+    local cms = C.CMS_sign(self.signcert, self.pkey, ffi_null, data_in, flags)
+    if cms == ffi_null then
+        return nil, get_error()
+    end
+    return cms
+end
+
+function _M.CMS_encrypt(self, data_in, flags)
+    local certs = sk_X509_new({ self.cert })
+    local cms = C.CMS_encrypt(certs, data_in, self.cipher, flags)
+    if cms == ffi_null then
+        return nil, get_error()
+    end
+    return cms
+end
+
+function _M.CMS_verify(self, cms, flags)
+    local out = self:BIO_new()
+    local certs = sk_X509_new({ self.cert })
+    if C.CMS_verify(cms, certs, self.store, ffi_null, out, flags) == 0 then
+        return nil, get_error()
+    end
+    return out
+end
+
+function _M.CMS_decrypt(self, cms, flags)
+    local out = self:BIO_new()
+    if C.CMS_decrypt(cms, self.pkey, self.signcert, ffi_null, out, flags) == 0 then
+        return nil, get_error()
+    end
+    return out
+end
+
 function _M.sign(self, data)
-    return CMS_sign(self.signcert, self.pkey, data)
+    if not data then
+        return nil, "no plain data"
+    end
+
+    local data_in, err = self:BIO_new(data)
+    if not data_in then
+        return nil, err
+    end
+
+    local cms, err = self:CMS_sign(data_in, CMS_NOATTR)
+    if not cms then
+        return nil, err
+    end
+
+    local signed, err = self:i2d_CMS_ContentInfo(cms)
+    if not signed then
+        return nil, err
+    end
+
+    return signed
 end
 
 function _M.encrypt(self, data)
-    return CMS_encrypt(self.cert, self.cipher, data)
+    if not data then
+        return nil, "no plain data"
+    end
+
+    local data_in, err = self:BIO_new(data)
+    if not data_in then
+        return nil, err
+    end
+
+    local cms, err = self:CMS_encrypt(data_in, 0)
+    if not cms then
+        return nil, err
+    end
+
+    local encryped, err = self:i2d_CMS_ContentInfo(cms)
+    if not encryped then
+        return nil, err
+    end
+
+    return encryped
 end
 
 function _M.verify(self, data)
-    return CMS_verify(self.cert, self.store, data)
+    if not data then
+        return nil, "no cihper data"
+    end
+
+    local cms, err = self:d2i_CMS_ContentInfo(data)
+    if not cms then
+        return nil, err
+    end
+
+    local out, err = self:CMS_verify(cms, bor(CMS_NO_ATTR_VERIFY, CMS_NO_CONTENT_VERIFY))
+    if not out then
+        return nil, err
+    end
+
+    local verified, err = self:BIO_read(out)
+    if not verified then
+        return nil, err
+    end
+
+    return verified
 end
 
 function _M.decrypt(self, data)
-    return CMS_decrypt(self.pkey, self.signcert, data)
+    if not data then
+        return nil, "no chiper data"
+    end
+
+    local cms, err = self:d2i_CMS_ContentInfo(data)
+    if not cms then
+        return nil, err
+    end
+
+    local out, err = self:CMS_decrypt(cms, CMS_DEBUG_DECRYPT)
+    if not out then
+        return nil, err
+    end
+
+    local decryped, err = self:BIO_read(out)
+    if not decryped then
+        return nil, err
+    end
+
+    return decryped
 end
 
 return _M
